@@ -2,6 +2,10 @@
 name = "rinha-compilers"
 version = "0.1.0"
 edition = "2024"
+authors = ["Vinicius Gomes <vinicius.svgomes@gmail.com>"]
+description = "My implementation for the 'Rinha de Compilers' made only 3 years late."
+repository = "https://github.com/vinisilvag/rinha-compilers"
+readme = "README.md"
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
