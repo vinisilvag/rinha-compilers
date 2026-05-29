@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment
-      run: rustup default 1.96
+      run: rustup default 1.96 && rustup component add rustfmt
     - name: Check formatting
       run: cargo fmt --version && cargo fmt --check
 
@@ -24,7 +24,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment
-      run: rustup default 1.96
+      run: rustup default 1.96 && rustup component add clippy
     - name: Run lint
       run: cargo clippy --version && cargo clippy --all-targets --all-features --tests --no-deps -- -D warnings
     - name: Build
