@@ -13,6 +13,8 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     Value::String(s) => println!("{s}"),
                     Value::Int(i) => println!("{i}"),
                     Value::Bool(b) => println!("{b}"),
+                    Value::Tuple(e0, e1) => println!("({e0}, {e1})"),
+                    Value::Closure(_, _, _, _) => println!("<#closure>"),
                     _ => {
                         return Err(RuntimeError::NonPrintableValue(val));
                     }
@@ -72,6 +74,13 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 match op {
                     BinaryOp::Add => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l + r)),
+                        // Syntax sugar
+                        (Value::String(l), Value::Int(r)) => {
+                            Ok(Value::String(l.to_owned() + &r.to_string()))
+                        }
+                        (Value::Int(l), Value::String(r)) => Ok(Value::String(l.to_string() + r)),
+                        // String concatenation
+                        (Value::String(l), Value::String(r)) => Ok(Value::String(l.to_owned() + r)),
                         _ => Err(RuntimeError::InvalidBinaryOperands {
                             op: op.clone(),
                             lhs: Box::new(lhs),
