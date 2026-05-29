@@ -85,7 +85,7 @@ pub enum Expr {
     },
     Call {
         callee: Box<Expr>,
-        arguments: Vec<Box<Expr>>,
+        arguments: Vec<Expr>,
         location: Location,
     },
     Binary {

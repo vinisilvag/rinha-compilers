@@ -9,7 +9,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
         match term {
             // Print
             Expr::Print { value, .. } => {
-                let val = eval_rec(&*value, env)?;
+                let val = eval_rec(value, env)?;
                 match val {
                     Value::String(s) => println!("{s}"),
                     Value::Int(i) => println!("{i}"),
@@ -26,13 +26,13 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
             Expr::Int { value, .. } => Ok(Value::Int(*value)),
             Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
             Expr::Tuple { first, second, .. } => Ok(Value::Tuple(
-                Box::new(eval_rec(&*first, env)?),
-                Box::new(eval_rec(&*second, env)?),
+                Box::new(eval_rec(first, env)?),
+                Box::new(eval_rec(second, env)?),
             )),
 
             // Tuple functions
             Expr::First { value, .. } => {
-                let val = eval_rec(&*value, env)?;
+                let val = eval_rec(value, env)?;
                 match val {
                     Value::Tuple(el, _) => Ok(*el),
                     _ => Err(RuntimeError::TupleMethodOnInvalidType(
@@ -42,7 +42,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 }
             }
             Expr::Second { value, .. } => {
-                let val = eval_rec(&*value, env)?;
+                let val = eval_rec(value, env)?;
                 match val {
                     Value::Tuple(_, el) => Ok(*el),
                     _ => Err(RuntimeError::TupleMethodOnInvalidType(
@@ -59,22 +59,22 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 otherwise,
                 ..
             } => {
-                let cond = eval_rec(&*condition, env)?;
+                let cond = eval_rec(condition, env)?;
                 match cond {
                     Value::Bool(b) => {
                         if b {
-                            eval_rec(&*then, env)
+                            eval_rec(then, env)
                         } else {
-                            eval_rec(&*otherwise, env)
+                            eval_rec(otherwise, env)
                         }
                     }
-                    _ => return Err(RuntimeError::ConditionNotBoolean()),
+                    _ => Err(RuntimeError::ConditionNotBoolean()),
                 }
             }
             // TODO: handle errors later
             Expr::Binary { lhs, op, rhs, .. } => {
-                let lhs = eval_rec(&*lhs, env)?;
-                let rhs = eval_rec(&*rhs, env)?;
+                let lhs = eval_rec(lhs, env)?;
+                let rhs = eval_rec(rhs, env)?;
                 match op {
                     BinaryOp::Add => match (lhs, rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l + r)),
@@ -156,7 +156,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
             )),
             Expr::Call {
                 callee, arguments, ..
-            } => match eval_rec(&*callee, env)? {
+            } => match eval_rec(callee, env)? {
                 Value::Closure(self_name, parameters, body, captured_env) => {
                     if parameters.len() != arguments.len() {
                         return Err(RuntimeError::MissingParameters(
@@ -178,7 +178,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     for (param, arg) in parameters.into_iter().zip(arguments) {
                         new_env.insert(param, eval_rec(arg, env)?);
                     }
-                    eval_rec(&*body, &mut new_env)
+                    eval_rec(&body, &mut new_env)
                 }
                 _ => Err(RuntimeError::ExpectedClosure),
             },
@@ -186,5 +186,5 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
     }
 
     let mut env: Env = Env::new();
-    eval_rec(&*ast.expression, &mut env)
+    eval_rec(&ast.expression, &mut env)
 }
