@@ -14,7 +14,9 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     Value::String(s) => println!("{s}"),
                     Value::Int(i) => println!("{i}"),
                     Value::Bool(b) => println!("{b}"),
-                    _ => return Err(RuntimeError::UnsupportedType(val.val_type())),
+                    _ => {
+                        return Err(RuntimeError::UnsupportedType(val.val_type()));
+                    }
                 }
                 Ok(Value::Void)
             }
@@ -86,6 +88,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l * r)),
                         _ => panic!("invalid datatype"),
                     },
+
                     BinaryOp::Div => match (lhs, rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l / r)),
                         _ => panic!("invalid datatype"),
@@ -132,28 +135,56 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     },
                 }
             }
-            Expr::Var { text, .. } => env.lookup(text.clone()),
+            Expr::Var { text, .. } => Ok(env.lookup(text.clone())?),
             Expr::Let {
                 name, value, next, ..
             } => {
-                let val = eval_rec(value, env)?;
+                let mut val = eval_rec(value, env)?;
+                if let Value::Closure(ref mut self_name, _, _, _) = val {
+                    *self_name = Some(name.text.clone());
+                }
                 env.insert(name.text.clone(), val);
                 eval_rec(next, env)
             }
             Expr::Function {
                 parameters, value, ..
-            } => {
-                unimplemented!("function")
-            }
+            } => Ok(Value::Closure(
+                None,
+                parameters.iter().map(|p| p.text.clone()).collect(),
+                value.clone(),
+                env.clone(),
+            )),
             Expr::Call {
                 callee, arguments, ..
-            } => {
-                unimplemented!("call")
-            }
+            } => match eval_rec(&*callee, env)? {
+                Value::Closure(self_name, parameters, body, captured_env) => {
+                    if parameters.len() != arguments.len() {
+                        return Err(RuntimeError::MissingParameters(
+                            parameters.len(),
+                            arguments.len(),
+                        ));
+                    }
+                    let mut new_env = captured_env.clone();
+                    // Enable recursion
+                    if let Some(name) = self_name.clone() {
+                        let self_closure = Value::Closure(
+                            self_name,
+                            parameters.clone(),
+                            body.clone(),
+                            captured_env,
+                        );
+                        new_env.insert(name, self_closure);
+                    }
+                    for (param, arg) in parameters.into_iter().zip(arguments) {
+                        new_env.insert(param, eval_rec(arg, env)?);
+                    }
+                    eval_rec(&*body, &mut new_env)
+                }
+                _ => Err(RuntimeError::ExpectedClosure),
+            },
         }
     }
 
-    println!("evaluating: {:?}", ast.name);
     let mut env: Env = Env::new();
     eval_rec(&*ast.expression, &mut env)
 }
