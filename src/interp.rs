@@ -1,26 +1,26 @@
-use crate::expr::{Ast, BinaryOp, Env, RinhaValue, Term};
+use crate::expr::{Ast, BinaryOp, Env, RinhaVal, Term};
 
 pub fn eval(ast: Ast) {
-    fn eval_rec(term: &Term, env: &Vec<Env>) -> RinhaValue {
+    fn eval_rec(term: &Term, env: &mut Env) -> RinhaVal {
         match term {
             // Print
             Term::Print { value, .. } => {
                 let val = eval_rec(&*value, env);
                 match val {
-                    RinhaValue::String(s) => println!("{}", s),
-                    RinhaValue::Int(i) => println!("{}", i),
-                    RinhaValue::Bool(b) => println!("{}", b),
-                    RinhaValue::Nil => panic!("should not print nil (I guess)"),
+                    RinhaVal::String(s) => println!("{s}"),
+                    RinhaVal::Int(i) => println!("{i}"),
+                    RinhaVal::Bool(b) => println!("{b}"),
+                    RinhaVal::Void => panic!("should not print void (I guess)"),
                     _ => unimplemented!("a print method for {:?} is not implemented yet", val),
                 }
-                RinhaValue::Nil
+                RinhaVal::Void
             }
 
             // Types
-            Term::Str { value, .. } => RinhaValue::String(value.to_owned()),
-            Term::Int { value, .. } => RinhaValue::Int(*value),
-            Term::Bool { value, .. } => RinhaValue::Bool(*value),
-            Term::Tuple { first, second, .. } => RinhaValue::Tuple((
+            Term::Str { value, .. } => RinhaVal::String(value.to_owned()),
+            Term::Int { value, .. } => RinhaVal::Int(*value),
+            Term::Bool { value, .. } => RinhaVal::Bool(*value),
+            Term::Tuple { first, second, .. } => RinhaVal::Tuple((
                 Box::new(eval_rec(&*first, env)),
                 Box::new(eval_rec(&*second, env)),
             )),
@@ -29,14 +29,14 @@ pub fn eval(ast: Ast) {
             Term::First { value, .. } => {
                 let val = eval_rec(&*value, env);
                 match val {
-                    RinhaValue::Tuple(t) => *t.0,
+                    RinhaVal::Tuple(t) => *t.0,
                     _ => panic!("first called without a tuple"),
                 }
             }
             Term::Second { value, .. } => {
                 let val = eval_rec(&*value, env);
                 match val {
-                    RinhaValue::Tuple(t) => *t.1,
+                    RinhaVal::Tuple(t) => *t.1,
                     _ => panic!("second called without a tuple"),
                 }
             }
@@ -50,7 +50,7 @@ pub fn eval(ast: Ast) {
             } => {
                 let cond = eval_rec(&*condition, env);
                 match cond {
-                    RinhaValue::Bool(b) => {
+                    RinhaVal::Bool(b) => {
                         if b {
                             eval_rec(&*then, env)
                         } else {
@@ -65,70 +65,70 @@ pub fn eval(ast: Ast) {
                 let rhs_eval = eval_rec(&*rhs, env);
                 match op {
                     BinaryOp::Add => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Int(l + r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Int(l + r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Sub => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Int(l - r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Int(l - r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Mul => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Int(l * r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Int(l * r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Div => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Int(l / r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Int(l / r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Rem => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Int(l % r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Int(l % r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Eq => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l == r),
-                        (RinhaValue::String(l), RinhaValue::String(r)) => RinhaValue::Bool(l == r),
-                        (RinhaValue::Bool(l), RinhaValue::Bool(r)) => RinhaValue::Bool(l == r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l == r),
+                        (RinhaVal::String(l), RinhaVal::String(r)) => RinhaVal::Bool(l == r),
+                        (RinhaVal::Bool(l), RinhaVal::Bool(r)) => RinhaVal::Bool(l == r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Neq => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l != r),
-                        (RinhaValue::String(l), RinhaValue::String(r)) => RinhaValue::Bool(l != r),
-                        (RinhaValue::Bool(l), RinhaValue::Bool(r)) => RinhaValue::Bool(l != r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l != r),
+                        (RinhaVal::String(l), RinhaVal::String(r)) => RinhaVal::Bool(l != r),
+                        (RinhaVal::Bool(l), RinhaVal::Bool(r)) => RinhaVal::Bool(l != r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Lt => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l < r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l < r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Gt => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l > r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l > r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Lte => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l <= r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l <= r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Gte => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Int(l), RinhaValue::Int(r)) => RinhaValue::Bool(l >= r),
+                        (RinhaVal::Int(l), RinhaVal::Int(r)) => RinhaVal::Bool(l >= r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::And => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Bool(l), RinhaValue::Bool(r)) => RinhaValue::Bool(l && r),
+                        (RinhaVal::Bool(l), RinhaVal::Bool(r)) => RinhaVal::Bool(l && r),
                         _ => panic!("invalid datatype"),
                     },
                     BinaryOp::Or => match (lhs_eval, rhs_eval) {
-                        (RinhaValue::Bool(l), RinhaValue::Bool(r)) => RinhaValue::Bool(l || r),
+                        (RinhaVal::Bool(l), RinhaVal::Bool(r)) => RinhaVal::Bool(l || r),
                         _ => panic!("invalid datatype"),
                     },
                 }
             }
-            Term::Var { text, .. } => {
-                unimplemented!("var")
-            }
+            Term::Var { text, .. } => env.lookup(text.clone()),
             Term::Let {
                 name, value, next, ..
             } => {
-                unimplemented!("let")
+                let val = eval_rec(value, env);
+                env.insert(name.text.clone(), val);
+                eval_rec(next, env)
             }
             Term::Function {
                 parameters, value, ..
@@ -144,6 +144,6 @@ pub fn eval(ast: Ast) {
     }
 
     println!("eval of: {:?}", ast.name);
-    let mut env: Vec<Env> = Vec::new();
-    eval_rec(&*ast.expression, &env);
+    let mut env: Env = Env::new();
+    eval_rec(&*ast.expression, &mut env);
 }

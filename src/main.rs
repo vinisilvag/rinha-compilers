@@ -18,6 +18,5 @@ fn main() {
     let args = Args::parse();
     let content = fs::read_to_string(args.program_ast_path).unwrap();
     let ast: Ast = serde_json::from_str(&content).unwrap();
-    println!("{:?}", ast);
     eval(ast);
 }

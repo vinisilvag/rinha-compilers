@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use serde::Deserialize;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Location {
     start: i32,
@@ -10,11 +11,11 @@ pub struct Location {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Parameter {
-    text: String,
+    pub text: String,
     location: Location,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -31,7 +32,7 @@ pub enum BinaryOp {
     Or,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Term {
     Print {
@@ -103,17 +104,46 @@ pub enum Term {
 }
 
 #[derive(Debug, Clone)]
-pub enum RinhaValue {
+pub enum RinhaVal {
     String(String),
     Int(i32),
     Bool(bool),
-    Tuple((Box<RinhaValue>, Box<RinhaValue>)),
-    Nil,
+    Tuple((Box<RinhaVal>, Box<RinhaVal>)),
+    Void,
 }
 
 #[derive(Debug, Clone)]
-pub enum Env {
-    Var { name: Parameter, value: RinhaValue },
+pub enum Binding {
+    Var { name: String, value: RinhaVal },
+}
+
+#[derive(Debug)]
+pub struct Env {
+    items: Vec<Binding>,
+}
+
+impl Env {
+    pub fn new() -> Self {
+        Self { items: Vec::new() }
+    }
+
+    pub fn insert(&mut self, key: String, value: RinhaVal) {
+        self.items.insert(0, Binding::Var { name: key, value });
+    }
+
+    pub fn lookup(&self, key: String) -> RinhaVal {
+        for item in self.items.clone() {
+            match item {
+                Binding::Var { name, value } => {
+                    if name == key {
+                        return value;
+                    }
+                }
+                _ => continue,
+            }
+        }
+        panic!("could not found a definition for {}", key);
+    }
 }
 
 #[derive(Debug, Deserialize)]
