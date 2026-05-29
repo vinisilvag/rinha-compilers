@@ -1,35 +1,46 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum ParserError {}
+use crate::{ast::expr::BinaryOp, runtime::value::Value};
 
 #[derive(Error, Debug)]
 pub enum RuntimeError {
-    #[error("could not print a value of type '{0}'")]
-    UnsupportedType(String),
+    #[error("cannot print value of type `{0}`")]
+    NonPrintableValue(Value),
 
-    #[error("tuple method {0} was called on an invalid type '{1}'")]
-    TupleMethodOnInvalidType(String, String),
+    #[error("tuple method `{method}` cannot be called on value of type `{found}`")]
+    InvalidTupleAccess { method: String, found: Value },
 
-    #[error("if condition expression was not of type Bool")]
-    ConditionNotBoolean(),
+    #[error("expected `bool` in if condition, found `{0}`")]
+    InvalidConditionType(Value),
 
-    // TODO: better errors
-    #[error("expected a closure, found ..")]
-    ExpectedClosure,
+    #[error("invalid operands for `{op}`: left is `{lhs}`, right is `{rhs}`")]
+    InvalidBinaryOperands {
+        op: BinaryOp,
+        lhs: Box<Value>,
+        rhs: Box<Value>,
+    },
 
-    #[error("expected '{0}' parameters on function call, found '{1}'")]
-    MissingParameters(usize, usize),
+    #[error("attempted to call a non-function value of type `{0}`")]
+    NonCallableValue(Value),
 
-    #[error("no definition for '{0}' was found")]
-    UndefinedVariable(String),
+    #[error("function expected {expected} argument(s), but received {found}")]
+    InvalidArgumentCount { expected: usize, found: usize },
+
+    #[error("undefined bind for `{0}` (variable or function)")]
+    UndefinedBind(String),
+
+    #[error("division by zero")]
+    DivisionByZero,
 }
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
-    #[error("parser error: {0}")]
-    Parser(#[from] ParserError),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("JSON parsing error: {0}")]
+    Parser(#[from] serde_json::Error),
 
     #[error("runtime error: {0}")]
-    Interpreter(#[from] RuntimeError),
+    Runtime(#[from] RuntimeError),
 }

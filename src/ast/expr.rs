@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use serde::Deserialize;
+use std::fmt;
 
 #[derive(Debug, Deserialize)]
 pub struct Ast {
@@ -11,9 +12,9 @@ pub struct Ast {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Location {
-    start: i32,
-    end: i32,
-    filename: String,
+    pub start: usize,
+    pub end: usize,
+    pub filename: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -39,9 +40,9 @@ pub enum BinaryOp {
     Or,
 }
 
-impl BinaryOp {
-    pub fn op_name(&self) -> String {
-        match self {
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let op = match self {
             BinaryOp::Add => "+",
             BinaryOp::Sub => "-",
             BinaryOp::Mul => "*",
@@ -55,8 +56,8 @@ impl BinaryOp {
             BinaryOp::Gte => ">=",
             BinaryOp::And => "&&",
             BinaryOp::Or => "||",
-        }
-        .to_owned()
+        };
+        write!(f, "{op}")
     }
 }
 

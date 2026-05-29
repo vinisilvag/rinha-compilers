@@ -1,4 +1,5 @@
 use crate::{ast::expr::Expr, runtime::environment::Env};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -10,16 +11,17 @@ pub enum Value {
     Void,
 }
 
-impl Value {
-    pub fn val_type(&self) -> String {
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::String(_) => "string",
-            Value::Int(_) => "int",
-            Value::Bool(_) => "bool",
-            Value::Tuple(_, _) => "tuple",
-            Value::Closure(_, _, _, _) => "<#closure>",
-            Value::Void => "void",
+            Value::String(_) => write!(f, "string"),
+            Value::Int(_) => write!(f, "int"),
+            Value::Bool(_) => write!(f, "bool"),
+            Value::Tuple(e0, e1) => {
+                write!(f, "({}, {})", e0, e1)
+            }
+            Value::Closure(_, _, _, _) => write!(f, "closure"),
+            Value::Void => write!(f, "void"),
         }
-        .to_owned()
     }
 }

@@ -7,7 +7,6 @@ use crate::{
 pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
     fn eval_rec(term: &Expr, env: &mut Env) -> Result<Value, RuntimeError> {
         match term {
-            // Print
             Expr::Print { value, .. } => {
                 let val = eval_rec(value, env)?;
                 match val {
@@ -15,13 +14,12 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     Value::Int(i) => println!("{i}"),
                     Value::Bool(b) => println!("{b}"),
                     _ => {
-                        return Err(RuntimeError::UnsupportedType(val.val_type()));
+                        return Err(RuntimeError::NonPrintableValue(val));
                     }
                 }
                 Ok(Value::Void)
             }
 
-            // Types
             Expr::Str { value, .. } => Ok(Value::String(value.to_owned())),
             Expr::Int { value, .. } => Ok(Value::Int(*value)),
             Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
@@ -29,30 +27,27 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 Box::new(eval_rec(first, env)?),
                 Box::new(eval_rec(second, env)?),
             )),
-
-            // Tuple functions
             Expr::First { value, .. } => {
                 let val = eval_rec(value, env)?;
                 match val {
                     Value::Tuple(el, _) => Ok(*el),
-                    _ => Err(RuntimeError::TupleMethodOnInvalidType(
-                        "first".to_owned(),
-                        val.val_type(),
-                    )),
+                    _ => Err(RuntimeError::InvalidTupleAccess {
+                        method: "first".to_owned(),
+                        found: val,
+                    }),
                 }
             }
             Expr::Second { value, .. } => {
                 let val = eval_rec(value, env)?;
                 match val {
                     Value::Tuple(_, el) => Ok(*el),
-                    _ => Err(RuntimeError::TupleMethodOnInvalidType(
-                        "second".to_owned(),
-                        val.val_type(),
-                    )),
+                    _ => Err(RuntimeError::InvalidTupleAccess {
+                        method: "second".to_owned(),
+                        found: val,
+                    }),
                 }
             }
 
-            // Expressions
             Expr::If {
                 condition,
                 then,
@@ -68,70 +63,122 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                             eval_rec(otherwise, env)
                         }
                     }
-                    _ => Err(RuntimeError::ConditionNotBoolean()),
+                    _ => Err(RuntimeError::InvalidConditionType(cond)),
                 }
             }
-            // TODO: handle errors later
             Expr::Binary { lhs, op, rhs, .. } => {
                 let lhs = eval_rec(lhs, env)?;
                 let rhs = eval_rec(rhs, env)?;
                 match op {
-                    BinaryOp::Add => match (lhs, rhs) {
+                    BinaryOp::Add => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l + r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Sub => match (lhs, rhs) {
+                    BinaryOp::Sub => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l - r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Mul => match (lhs, rhs) {
+                    BinaryOp::Mul => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l * r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
 
-                    BinaryOp::Div => match (lhs, rhs) {
+                    BinaryOp::Div => match (&lhs, &rhs) {
+                        (Value::Int(_), Value::Int(0)) => Err(RuntimeError::DivisionByZero),
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l / r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Rem => match (lhs, rhs) {
+                    BinaryOp::Rem => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l % r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Eq => match (lhs, rhs) {
+                    BinaryOp::Eq => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l == r)),
                         (Value::String(l), Value::String(r)) => Ok(Value::Bool(l == r)),
                         (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(l == r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Neq => match (lhs, rhs) {
+                    BinaryOp::Neq => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l != r)),
                         (Value::String(l), Value::String(r)) => Ok(Value::Bool(l != r)),
                         (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(l != r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Lt => match (lhs, rhs) {
+                    BinaryOp::Lt => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l < r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Gt => match (lhs, rhs) {
+                    BinaryOp::Gt => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l > r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Lte => match (lhs, rhs) {
+                    BinaryOp::Lte => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l <= r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Gte => match (lhs, rhs) {
+                    BinaryOp::Gte => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Bool(l >= r)),
-                        _ => panic!("invalid datatype"),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::And => match (lhs, rhs) {
-                        (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(l && r)),
-                        _ => panic!("invalid datatype"),
+                    BinaryOp::And => match (&lhs, &rhs) {
+                        (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l && *r)),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
-                    BinaryOp::Or => match (lhs, rhs) {
-                        (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(l || r)),
-                        _ => panic!("invalid datatype"),
+                    BinaryOp::Or => match (&lhs, &rhs) {
+                        (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l || *r)),
+                        _ => Err(RuntimeError::InvalidBinaryOperands {
+                            op: op.clone(),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        }),
                     },
                 }
             }
@@ -156,32 +203,34 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
             )),
             Expr::Call {
                 callee, arguments, ..
-            } => match eval_rec(callee, env)? {
-                Value::Closure(self_name, parameters, body, captured_env) => {
-                    if parameters.len() != arguments.len() {
-                        return Err(RuntimeError::MissingParameters(
-                            parameters.len(),
-                            arguments.len(),
-                        ));
+            } => {
+                let callee_val = eval_rec(callee, env)?;
+                match callee_val {
+                    Value::Closure(self_name, parameters, body, captured_env) => {
+                        if parameters.len() != arguments.len() {
+                            return Err(RuntimeError::InvalidArgumentCount {
+                                expected: parameters.len(),
+                                found: arguments.len(),
+                            });
+                        }
+                        let mut new_env = captured_env.clone();
+                        if let Some(name) = self_name.clone() {
+                            let self_closure = Value::Closure(
+                                self_name,
+                                parameters.clone(),
+                                body.clone(),
+                                captured_env,
+                            );
+                            new_env.insert(name, self_closure);
+                        }
+                        for (param, arg) in parameters.into_iter().zip(arguments) {
+                            new_env.insert(param, eval_rec(arg, env)?);
+                        }
+                        eval_rec(&body, &mut new_env)
                     }
-                    let mut new_env = captured_env.clone();
-                    // Enable recursion
-                    if let Some(name) = self_name.clone() {
-                        let self_closure = Value::Closure(
-                            self_name,
-                            parameters.clone(),
-                            body.clone(),
-                            captured_env,
-                        );
-                        new_env.insert(name, self_closure);
-                    }
-                    for (param, arg) in parameters.into_iter().zip(arguments) {
-                        new_env.insert(param, eval_rec(arg, env)?);
-                    }
-                    eval_rec(&body, &mut new_env)
+                    _ => Err(RuntimeError::NonCallableValue(callee_val)),
                 }
-                _ => Err(RuntimeError::ExpectedClosure),
-            },
+            }
         }
     }
 

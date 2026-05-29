@@ -26,6 +26,6 @@ impl Env {
                 return Ok(item.value.clone());
             }
         }
-        Err(RuntimeError::UndefinedVariable(key))
+        Err(RuntimeError::UndefinedBind(key))
     }
 }
