@@ -18,13 +18,16 @@ This project was built to explore:
 
 ## Running
 ### Requirements
-* Rust and Cargo version 1.93.1 (the one I used during implementation)
+* Rust and Cargo version 1.96 (the one I used during implementation)
 
 ### Build and Run
 ```bash
 cargo build --release
 cargo run --release <path_to_program_ast.json>
 ```
+
+### Docker
+TODO
 
 ## Contributing
 Feel free to open issues or submit pull requests if you'd like to contribute to this project.

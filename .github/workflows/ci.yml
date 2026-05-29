@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup environment
+      run: rustup default 1.96
+    - name: Check formatting
+      run: cargo fmt --version && cargo fmt --check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup environment
+      run: rustup default 1.96
+    - name: Run lint
+      run: cargo clippy --version && cargo clippy --all-targets --all-features --tests --no-deps -- -D warnings
+    - name: Build
+      run: cargo --version && cargo build --verbose
+
+  # test:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Setup environment
+  #     run: rustup default 1.96
+  #   - name: Run tests
+  #     run: cargo --version && cargo test --release --verbose
+
+  # coverage:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: taiki-e/install-action@cargo-llvm-cov
+  #     - name: Generate coverage file
+  #       run: cargo llvm-cov --lcov --output-path lcov.info
+  #     - name: Upload coverage reports to Codecov
+  #       uses: codecov/codecov-action@v5
+  #       with:
+  #         files: lcov.info
