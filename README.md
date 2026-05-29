@@ -29,6 +29,15 @@ cargo run --release <path_to_program_ast.json>
 ### Docker
 TODO
 
+## Roadmap
+* Better specified errors (with the `location` information on the AST)
+* Dockerfile setup
+* Some optimizations (do some profilling with `flamegraph` first):
+  * Unnecessary `.clone()` (use `Rc<..>`)
+  * Ensure `env` is getting passed through reference everywhere
+  * `str` instead of `String`
+  * Memoization/caching
+
 ## Contributing
 Feel free to open issues or submit pull requests if you'd like to contribute to this project.
 
