@@ -5,7 +5,7 @@
 > Thankfully, this implementation arrived only 3 years after the original
 'Rinha de Compilers'.
 
-So, formally, this is my implementation for the [Rinha de Compilers](https://github.com/aripiprazole/rinha-de-compiler)
+Jokes aside, this is my implementation for the [Rinha de Compilers](https://github.com/aripiprazole/rinha-de-compiler)
 using Rust with a Tree-Walking Interpreter architecture.
 
 This project was built to explore:
@@ -39,7 +39,7 @@ docker run --rm -it \
 
 ## Roadmap
 * Better specified errors (with the `location` information on the AST)
-* Some optimizations (do some profilling with `flamegraph` first):
+* Some optimizations (do some profilling first):
   * Unnecessary `.clone()` (use `Rc<..>`)
   * Ensure `env` is getting passed through reference everywhere
   * `str` instead of `String`
