@@ -1,31 +1,39 @@
 use crate::{error::RuntimeError, runtime::value::Value};
-
-#[derive(Debug, Clone)]
-pub struct Bind {
-    name: String,
-    value: Value,
-}
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    items: Vec<Bind>,
+    parent: Option<Rc<Env>>,
+    bindings: HashMap<String, Value>,
 }
 
 impl Env {
     pub fn new() -> Self {
-        Self { items: Vec::new() }
+        Self {
+            parent: None,
+            bindings: HashMap::new(),
+        }
+    }
+
+    pub fn extend(parent: Rc<Env>) -> Self {
+        Self {
+            parent: Some(parent),
+            bindings: HashMap::new(),
+        }
     }
 
     pub fn insert(&mut self, name: String, value: Value) {
-        self.items.insert(0, Bind { name, value });
+        self.bindings.insert(name, value);
     }
 
-    pub fn lookup(&self, key: String) -> Result<Value, RuntimeError> {
-        for item in &self.items {
-            if item.name == key {
-                return Ok(item.value.clone());
-            }
+    pub fn lookup(&self, key: &str) -> Result<Value, RuntimeError> {
+        if let Some(val) = self.bindings.get(key) {
+            return Ok(val.clone());
         }
-        Err(RuntimeError::UndefinedBind(key))
+        if let Some(parent) = &self.parent {
+            return parent.lookup(key);
+        }
+        Err(RuntimeError::UndefinedBind(key.to_string()))
     }
 }

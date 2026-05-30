@@ -1,5 +1,5 @@
 use crate::{ast::expr::Expr, runtime::environment::Env};
-use std::fmt;
+use std::{fmt, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -7,7 +7,7 @@ pub enum Value {
     Int(i32),
     Bool(bool),
     Tuple(Box<Value>, Box<Value>),
-    Closure(Option<String>, Vec<String>, Box<Expr>, Env),
+    Closure(Option<String>, Vec<String>, Box<Expr>, Rc<Env>),
     Void,
 }
 

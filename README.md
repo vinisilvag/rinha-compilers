@@ -28,10 +28,10 @@ cargo run --release <path_to_program_ast.json>
 
 ### Docker
 ```bash
-# Build Docker image
+# Build the Docker image
 docker build -t rinha-compilers .
 
-# Run
+# Run with
 docker run --rm -it \
   -v <path_to_some_input_file.json>:/var/rinha/source.rinha.json \
   rinha-compilers

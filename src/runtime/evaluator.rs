@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     ast::expr::{Ast, BinaryOp, Expr},
     error::RuntimeError,
@@ -5,7 +7,7 @@ use crate::{
 };
 
 pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
-    fn eval_rec(term: &Expr, env: &mut Env) -> Result<Value, RuntimeError> {
+    fn eval_rec(term: &Expr, env: Rc<Env>) -> Result<Value, RuntimeError> {
         match term {
             Expr::Print { value, .. } => {
                 let val = eval_rec(value, env)?;
@@ -26,8 +28,8 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
             Expr::Int { value, .. } => Ok(Value::Int(*value)),
             Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
             Expr::Tuple { first, second, .. } => Ok(Value::Tuple(
-                Box::new(eval_rec(first, env)?),
-                Box::new(eval_rec(second, env)?),
+                Box::new(eval_rec(first, Rc::clone(&env))?),
+                Box::new(eval_rec(second, Rc::clone(&env))?),
             )),
             Expr::First { value, .. } => {
                 let val = eval_rec(value, env)?;
@@ -56,21 +58,21 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 otherwise,
                 ..
             } => {
-                let cond = eval_rec(condition, env)?;
+                let cond = eval_rec(condition, Rc::clone(&env))?;
                 match cond {
                     Value::Bool(b) => {
                         if b {
-                            eval_rec(then, env)
+                            eval_rec(then, Rc::clone(&env))
                         } else {
-                            eval_rec(otherwise, env)
+                            eval_rec(otherwise, Rc::clone(&env))
                         }
                     }
                     _ => Err(RuntimeError::InvalidConditionType(cond)),
                 }
             }
             Expr::Binary { lhs, op, rhs, .. } => {
-                let lhs = eval_rec(lhs, env)?;
-                let rhs = eval_rec(rhs, env)?;
+                let lhs = eval_rec(lhs, Rc::clone(&env))?;
+                let rhs = eval_rec(rhs, Rc::clone(&env))?;
                 match op {
                     BinaryOp::Add => match (&lhs, &rhs) {
                         (Value::Int(l), Value::Int(r)) => Ok(Value::Int(l + r)),
@@ -191,16 +193,17 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                     },
                 }
             }
-            Expr::Var { text, .. } => Ok(env.lookup(text.clone())?),
+            Expr::Var { text, .. } => Ok(env.lookup(text)?),
             Expr::Let {
                 name, value, next, ..
             } => {
-                let mut val = eval_rec(value, env)?;
+                let mut val = eval_rec(value, Rc::clone(&env))?;
                 if let Value::Closure(ref mut self_name, _, _, _) = val {
                     *self_name = Some(name.text.clone());
                 }
-                env.insert(name.text.clone(), val);
-                eval_rec(next, env)
+                let mut new_env = Env::extend(Rc::clone(&env));
+                new_env.insert(name.text.clone(), val);
+                eval_rec(next, Rc::new(new_env))
             }
             Expr::Function {
                 parameters, value, ..
@@ -208,12 +211,12 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                 None,
                 parameters.iter().map(|p| p.text.clone()).collect(),
                 value.clone(),
-                env.clone(),
+                Rc::clone(&env),
             )),
             Expr::Call {
                 callee, arguments, ..
             } => {
-                let callee_val = eval_rec(callee, env)?;
+                let callee_val = eval_rec(callee, Rc::clone(&env))?;
                 match callee_val {
                     Value::Closure(self_name, parameters, body, captured_env) => {
                         if parameters.len() != arguments.len() {
@@ -222,7 +225,7 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                                 found: arguments.len(),
                             });
                         }
-                        let mut new_env = captured_env.clone();
+                        let mut new_env = Env::extend(Rc::clone(&captured_env));
                         if let Some(name) = self_name.clone() {
                             let self_closure = Value::Closure(
                                 self_name,
@@ -233,9 +236,10 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
                             new_env.insert(name, self_closure);
                         }
                         for (param, arg) in parameters.into_iter().zip(arguments) {
-                            new_env.insert(param, eval_rec(arg, env)?);
+                            let arg_val = eval_rec(arg, Rc::clone(&env))?;
+                            new_env.insert(param, arg_val);
                         }
-                        eval_rec(&body, &mut new_env)
+                        eval_rec(&body, Rc::new(new_env))
                     }
                     _ => Err(RuntimeError::NonCallableValue(callee_val)),
                 }
@@ -243,6 +247,5 @@ pub fn eval(ast: Ast) -> Result<Value, RuntimeError> {
         }
     }
 
-    let mut env: Env = Env::new();
-    eval_rec(&ast.expression, &mut env)
+    eval_rec(&ast.expression, Rc::new(Env::new()))
 }
