@@ -5,8 +5,8 @@
 > Thankfully, this implementation arrived only 3 years after the original
 'Rinha de Compilers'.
 
-So, formally, this is my implementation for the 'Rinha de Compilers' using Rust
-with a Tree-Walking Interpreter architecture.
+So, formally, this is my implementation for the [Rinha de Compilers](https://github.com/aripiprazole/rinha-de-compiler)
+using Rust with a Tree-Walking Interpreter architecture.
 
 This project was built to explore:
 * parsing and AST construction;
@@ -27,11 +27,18 @@ cargo run --release <path_to_program_ast.json>
 ```
 
 ### Docker
-TODO
+```bash
+# Build Docker image
+docker build -t rinha-compilers .
+
+# Run
+docker run --rm -it \
+  -v <path_to_some_input_file.json>:/var/rinha/source.rinha.json \
+  rinha-compilers
+```
 
 ## Roadmap
 * Better specified errors (with the `location` information on the AST)
-* Dockerfile setup
 * Some optimizations (do some profilling with `flamegraph` first):
   * Unnecessary `.clone()` (use `Rc<..>`)
   * Ensure `env` is getting passed through reference everywhere
